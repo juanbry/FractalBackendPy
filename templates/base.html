@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Order Management{% endblock %}</title>
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('my_orders') }}">My Orders</a> |
+        <a href="{{ url_for('products') }}">Products</a>
+    </nav>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div style="color: red; margin: 10px 0;">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

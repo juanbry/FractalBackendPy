@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{% if order %}Edit Order{% else %}Add Order{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if order %}Edit Order{% else %}Add Order{% endif %}</h1>
+
+<form method="POST" action="{{ url_for('save_order') }}">
+    {% if order %}
+        <input type="hidden" name="order_id" value="{{ order.id }}">
+    {% endif %}
+    
+    <table>
+        <tr>
+            <td>Order #:</td>
+            <td><input type="text" name="order_number" value="{% if order %}{{ order.order_number }}{% endif %}" required {% if order and order.status == 'Completed' %}disabled{% endif %}></td>
+        </tr>
+        <tr>
+            <td>Date:</td>
+            <td><input type="text" value="{% if order %}{{ order.date.strftime('%Y-%m-%d %H:%M') }}{% else %}{{ datetime.now().strftime('%Y-%m-%d %H:%M') }}{% endif %}" disabled></td>
+        </tr>
+        <tr>
+            <td># Products:</td>
+            <td><input type="text" value="{{ order.total_products if order else 0 }}" disabled></td>
+        </tr>
+        <tr>
+            <td>Final Price:</td>
+            <td><input type="text" value="${{ "%.2f"|format(order.final_price) if order else '$0.00' }}" disabled></td>
+        </tr>
+    </table>
+    
+    {% if not order or order.status != 'Completed' %}
+        <button type="submit">Save Order</button>
+    {% endif %}
+</form>
+
+{% if order %}
+<h3>Products in Order</h3>
+
+{% if order.status != 'Completed' %}
+<button onclick="document.getElementById('addProductModal').style.display='block'">Add Product</button>
+{% endif %}
+
+<table border="1" style="margin-top: 10px; width: 100%;">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Unit Price</th>
+            <th>Qty</th>
+            <th>Total Price</th>
+            {% if order.status != 'Completed' %}
+            <th>Options</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for op in order_products %}
+        <tr>
+            <td>{{ op.product.id }}</td>
+            <td>{{ op.product.name }}</td>
+            <td>${{ "%.2f"|format(op.product.unit_price) }}</td>
+            <td>{{ op.quantity }}</td>
+            <td>${{ "%.2f"|format(op.total_price) }}</td>
+            {% if order.status != 'Completed' %}
+            <td>
+                <a href="#" onclick="document.getElementById('edit_product_id').value='{{ op.product.id }}'; document.getElementById('edit_quantity').value='{{ op.quantity }}'; document.getElementById('editProductModal').style.display='block'">Edit</a>
+                <a href="/remove-product-from-order/{{ op.id }}" onclick="return confirm('Are you sure you want to remove this product?')">Remove</a>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Add Product Modal -->
+<div id="addProductModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border:2px solid black; padding:20px;">
+    <h3>Add Product</h3>
+    <form method="POST" action="{{ url_for('add_product_to_order') }}">
+        <input type="hidden" name="order_id" value="{{ order.id if order else '' }}">
+        
+        <p>Product: 
+            <select name="product_id" required>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }} - ${{ "%.2f"|format(product.unit_price) }}</option>
+                {% endfor %}
+            </select>
+        </p>
+        
+        <p>Quantity: <input type="number" name="quantity" min="1" required></p>
+        
+        <button type="submit">Add Product</button>
+        <button type="button" onclick="document.getElementById('addProductModal').style.display='none'">Cancel</button>
+    </form>
+</div>
+
+<!-- edit prodct -->
+<div id="editProductModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border:2px solid black; padding:20px;">
+    <h3>Edit Product</h3>
+    <form method="POST" action="{{ url_for('add_product_to_order') }}">
+        <input type="hidden" name="order_id" value="{{ order.id if order else '' }}">
+        <input type="hidden" id="edit_product_id" name="product_id">
+        
+        <p>Quantity: <input type="number" id="edit_quantity" name="quantity" min="1" required></p>
+        
+        <button type="submit">Update Product</button>
+        <button type="button" onclick="document.getElementById('editProductModal').style.display='none'">Cancel</button>
+    </form>
+</div>
+
+{% endblock %}

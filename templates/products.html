@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<h1>Products</h1>
+
+<h3>Add New Product</h3>
+<form method="POST" action="{{ url_for('add_product') }}">
+    <table>
+        <tr>
+            <td>Name:</td>
+            <td><input type="text" name="name" required></td>
+        </tr>
+        <tr>
+            <td>Unit Price:</td>
+            <td><input type="number" name="unit_price" step="0.10" min="0" required></td>
+        </tr>
+    </table>
+    <button type="submit">Add Product</button>
+</form>
+
+<h3>Products List</h3>
+<table border="1" style="width: 100%; margin-top: 20px;">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Unit Price</th>
+            <th>Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <td>{{ product.id }}</td>
+            <td>{{ product.name }}</td>
+            <td>${{ "%.2f"|format(product.unit_price) }}</td>
+            <td>
+                <a href="/delete-product/{{ product.id }}" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+</script>
+{% endblock %}
