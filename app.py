@@ -1,45 +1,20 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
+
+from models import db, Product, Order, OrderProduct
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://fractal_db_aigs_user:BMpWDLHWYmE3Xg8u7VsAZlYtFK5pa4mL@dpg-d0rk7rruibrs73dap6g0-a.oregon-postgres.render.com/fractal_db_aigs')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+db.init_app(app)
 
-# modelos
-class Product(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    unit_price = db.Column(db.Float, nullable=False)
-
-class Order(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_number = db.Column(db.String(50), nullable=False)
-    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default='Pending')
-    total_products = db.Column(db.Integer, nullable=False, default=0)
-    final_price = db.Column(db.Float, nullable=False, default=0.0)
-
-class OrderProduct(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
-    total_price = db.Column(db.Float, nullable=False)
-    
-    order = db.relationship('Order', backref=db.backref('order_products', lazy=True))
-    product = db.relationship('Product', backref=db.backref('order_products', lazy=True))
-
-# hacer eñ datetime disponible en las plantillas
 @app.context_processor
 def inject_datetime():
     return {'datetime': datetime}
 
-# routes
 @app.route('/')
 def index():
     return redirect(url_for('my_orders'))
@@ -81,7 +56,6 @@ def save_order():
         db.session.commit()
         return redirect(url_for('my_orders'))
     else:
-        # para nuevas ordenes, crear y redirigir al add prodct
         order = Order(order_number=order_number)
         db.session.add(order)
         db.session.commit()
@@ -108,7 +82,6 @@ def add_product_to_order():
     product = Product.query.get_or_404(product_id)
     total_price = product.unit_price * quantity
     
-    # reviso si existe
     existing = OrderProduct.query.filter_by(order_id=order_id, product_id=product_id).first()
     if existing:
         existing.quantity = quantity
@@ -117,12 +90,10 @@ def add_product_to_order():
         order_product = OrderProduct(
             order_id=order_id,
             product_id=product_id,
-            quantity=quantity,
-            total_price=total_price
+            quantity=quantity
         )
         db.session.add(order_product)
     
-    # hacer el commit de orders
     update_order_totals(order_id)
     db.session.commit()
     
@@ -174,14 +145,11 @@ def update_order_totals(order_id):
     order = Order.query.get(order_id)
     order_products = OrderProduct.query.filter_by(order_id=order_id).all()
     
-    order.total_products = sum(op.quantity for op in order_products)
     order.final_price = sum(op.total_price for op in order_products)
 
 def init_db():
     with app.app_context():
         db.create_all()
-        
-        # un poco de hardcode para instancia default
         if Product.query.count() == 0:
             products = [
                 Product(name='Chocolate', unit_price=8.5),
